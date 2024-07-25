@@ -1,0 +1,72 @@
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  /* padding: 2rem; */
+  text-align: left;
+}
+
+body {
+  background-image: url("https://www.shutterstock.com/image-vector/seamless-pattern-outline-icons-seo-600nw-659141167.jpg");
+  /* opacity: 0.3; */
+  backdrop-filter: blur(2px);
+
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.loginBox {
+  /* background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRanrXtjm4HkyfXK2Hlm7IWyb2vlgz_j-pVaA&s"); */
+  /* background-size: cover; */
+  height: inherit;
+  backdrop-filter: blur(10px);
+  background: transparent;
+  border: 1px solid ;
+
+}
+
+.mainBox {
+  display: block;
+  margin: 0px auto;
+  width: 400px;
+  border: 1px solid green;
+  height: 100vh;
+  /* background-color: white; */
+}
