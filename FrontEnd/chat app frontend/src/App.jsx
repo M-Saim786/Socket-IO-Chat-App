@@ -57,30 +57,68 @@ function App() {
   //     setUserJoined(true); // Set user joined to true after emitting the event
   //   }
   // };
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [Rooms, setRooms] = useState([])
+  const [roomId, setRoomId] = useState("")
 
   const handleMessageChange = (e) => {
     setMessage(e.target.value);
-    socket.emit("typing", Name)
+    socket.emit("typing", name)
   };
+
+
+  const getMessage = () => {
+
+  }
+
+
 
   const sendMessage = (e) => {
     e.preventDefault();
-    if (message.trim()) {
-      socket.emit('chat message', { Name, message }); // Send message with username
-      setMessage('');
-    }
+
+    const userId = JSON.parse(localStorage.getItem("user"))
+    socket.emit("chat-message", { roomId: roomId, sender: userId?._id, message: message })
+
+    // let data = JSON.stringify({
+    //   "chatRoom": roomId,
+    //   "sender": userId?._id,
+    //   "message": message
+    // });
+
+    // let config = {
+    //   method: 'post',
+    //   maxBodyLength: Infinity,
+    //   url: 'http://localhost:5000/send-message',
+    //   headers: {
+    //     'Content-Type': 'application/json'
+    //   },
+    //   data: data
+    // };
+
+    // axios.request(config)
+    //   .then((response) => {
+    //     console.log((response.data));
+    //   })
+    //   .catch((error) => {
+    //     console.log(error);
+    //   });
+
+
+    // if (message.trim()) {
+    //   socket.emit('chat message', { Name, message }); // Send message with username
+    //   setMessage('');
+    // }
   };
 
   const [isLogin, setIsLogin] = useState(true);
 
-  const options = [
-    { value: 'chocolate', label: 'Chocolate' },
-    { value: 'strawberry', label: 'Strawberry' },
-    { value: 'vanilla', label: 'Vanilla' }
-  ]
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  // const options = [
+  //   { value: 'chocolate', label: 'Chocolate' },
+  //   { value: 'strawberry', label: 'Strawberry' },
+  //   { value: 'vanilla', label: 'Vanilla' }
+  // ]
 
   const loginUser = () => {
     console.log(name)
@@ -115,7 +153,6 @@ function App() {
 
   }
 
-  const [Rooms, setRooms] = useState([])
 
   const getRooms = () => {
 
@@ -147,7 +184,7 @@ function App() {
 
   useEffect(() => {
     getRooms()
-  }, [])
+  }, [isLogin])
   // ------------ create Room ------------
   const handleCreate = async (inputValue) => {
     try {
@@ -189,31 +226,39 @@ function App() {
 
   const handleChange = (room) => {
     const userId = JSON.parse(localStorage.getItem("user"))
+    setRoomId(room?._id)
+    socket.emit("join-room", { roomId: room?._id, user: userId })
+    socket.emit("user-joined", userId?.name)
+    socket.on('get-message', (message) => {
+      console.log(message)
+      setMessages(message)
+      // setMessages((prevMsgs)=>[...prevMsgs, message])
+    }); // Send message with username
 
-    let data = JSON.stringify({
-      "roomId": room?._id,
-      "userId": userId?._id
-    });
 
-    let config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: 'http://localhost:5000/join-room',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      data: data
-    };
+    // let data = JSON.stringify({
+    //   "roomId": room?._id,
+    //   "userId": userId?._id
+    // });
 
-    axios.request(config)
-      .then((response) => {
-        console.log(JSON.stringify(response.data));
-        socket.emit("join-room", { roomId: room?._id, user: userId?.name })
+    // let config = {
+    //   method: 'post',
+    //   maxBodyLength: Infinity,
+    //   url: 'http://localhost:5000/join-room',
+    //   headers: {
+    //     'Content-Type': 'application/json'
+    //   },
+    //   data: data
+    // };
 
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+    // axios.request(config)
+    //   .then((response) => {
+    //     console.log(JSON.stringify(response.data));
+
+    // })
+    // .catch((error) => {
+    //   console.log(error);
+    // });
 
     // console.log(name)
     // socket.emit("user-joined", Name)
@@ -277,13 +322,13 @@ function App() {
               onCreateOption={handleCreate}
             />
             <div className="border border-blue-500 h-full  ">
-              <div className='border border-red-500 relative h-[430px]'>
+              <div className='border border-red-500 relative h-[430px] overflow-y-scroll'>
 
                 <div className="overflow-y-auto  ">
-                  {messages.map((msg, index) => (
+                  {messages?.map((msg, index) => (
                     <MessageBox
                       key={index}
-                      position={msg.Name !== Name ? "left" : "right"}
+                      position={msg.sender.name !== name ? "left" : "right"}
                       type={"text"}
                       text={msg.message}
                     />

@@ -7,7 +7,11 @@ require("dotenv").config()
 const bodyParser = require('body-parser');
 
 const mainRouter = require("./Router/mainRouter")
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
+const chatRoomSchema = require('./Model/chatRoomSchema');
+const messageSchema = require('./Model/messageSchema');
+const userSchema = require('./Model/userSchema');
+
 const dbUrl = process.env.dbUrl
 console.log(dbUrl)
 mongoose.connect(dbUrl).then((res) => {
@@ -50,16 +54,38 @@ const io = serverIo(server, {
 // app.use(cors()) // Uncomment only if necessary for cross-origin requests
 
 let messages = []
+// let roomId;
+
+const getMessage = async (roomId) => {
+    console.log("roomId", roomId);
+    if (roomId !== "" && roomId !== null) {
+        const allMessage = await messageSchema.find({ chatRoom: roomId }).populate("sender", "name").lean();
+        console.log(allMessage);
+        return allMessage;
+    }
+}
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id); // Log for debugging
+    console.log('A user connected:', socket.id);
 
     // Join a chat room
-    socket.on('join-room', ({ roomId, user }) => {
+    socket.on('join-room', async ({ roomId, user }) => {
+        socket.chatRoomId = roomId;  // Store roomId in the socket object
+        const room = await chatRoomSchema.findById(roomId);
+        if (room) {
+            room.users.push(user?._id);
+            await room.save();
+        }
+
         socket.join(roomId);
-        console.log(`${user} joined room: ${roomId}`);
-        // console.log(`User joined room: ${user}`);
+        const messages = await getMessage(roomId);
+        console.log('Messages:', messages); // Verify messages is an array
+
+        io.to(roomId).emit('get-message', messages); // Emit messages to the room only
+
+        console.log(`${user?.name} joined room: ${roomId}`);
     });
+
 
     // Leave a chat room
     socket.on('leaveRoom', ({ roomId }) => {
@@ -78,13 +104,38 @@ io.on('connection', (socket) => {
         socket.emit('welcome', `Welcome to the chat, ${username}!`);
     });
 
-    socket.on('chat message', (msg) => {
-        io.emit('msg-broadcast', msg); // Broadcast messages to all clients
-        console.log(msg)
-        messages.push(msg)
-        io.emit("get-message", messages)
+    socket.on('chat-message', async ({ roomId, sender, message }) => {
+        // const roomId = socket.chatRoomId;  // Retrieve the stored roomId
+        if (!roomId) {
+            console.error('User is not in a room');
+            return;
+        }
+
+        const sendMessage = await messageSchema({ chatRoom: roomId, sender: sender, message: message }).save();
+        io.to(roomId).emit('msg-broadcast', message); // Broadcast messages to all clients in room
+
+        const messages = await getMessage(roomId);
+        console.log('Messages:', messages); // Verify messages is an array
+
+        io.to(roomId).emit("get-message", messages); // Emit messages to the room only
+
     });
-    console.log(messages)
+    // console.log(allMessage)
+
+    socket.emit("get-message", async () => {
+        const roomId = socket.chatRoomId;  // Retrieve the stored roomId
+        if (!roomId) {
+            console.error('User is not in a room');
+            return;
+        }
+
+        const messages = await getMessage(roomId);
+        console.log('Messages:', messages); // Verify messages is an array
+
+        io.to(roomId).emit('get-message', messages); // Emit messages to the room only
+    })
+
+    // console.log(messages)
     socket.on("typing", (username) => {
         // console.log(username)
         io.emit("user-typing", `${username} is typing`)
