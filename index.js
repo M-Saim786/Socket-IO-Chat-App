@@ -70,60 +70,86 @@ io.on('connection', (socket) => {
 
     // Join a chat room
     socket.on('join-room', async ({ roomId, user }) => {
-        socket.chatRoomId = roomId;  // Store roomId in the socket object
+        socket.chatRoomId = roomId;
         const room = await chatRoomSchema.findById(roomId);
         if (room) {
-            room.users.push(user?._id);
-            await room.save();
+            if (!room.users.includes(user?._id)) {
+                room.users.push(user?._id);
+                await room.save();
+                socket.join(roomId);
+                io.in(roomId).emit("user-joined-room", `${user?.name} joined room`);
+                // console.log(`${user?.name} joined room: ${roomId}`);
+            } else {
+                console.log(`${user?.name} is already in room: ${roomId}`);
+                socket.emit("user-already-in-room", `${user?.name} is already in the room`);
+            }
+            // await room.save();
         }
 
-        socket.join(roomId);
+        // socket.join(roomId);
         const messages = await getMessage(roomId);
-        console.log('Messages:', messages); // Verify messages is an array
+        // console.log('Messages:', messages);
 
-        io.to(roomId).emit('get-message', messages); // Emit messages to the room only
+        io.to(roomId).emit('get-message', messages);
 
-        console.log(`${user?.name} joined room: ${roomId}`);
+        // console.log(`${user?.name} joined room: ${roomId}`);
     });
 
 
     // Leave a chat room
-    socket.on('leaveRoom', ({ roomId }) => {
-        socket.leave(roomId);
-        console.log(`User left room: ${roomId}`);
+    // Leave a chat room
+    socket.on('leave-room', async ({ roomId, user }) => {
+        console.log('leave-room event received:', { roomId, user });
+
+        const room = await chatRoomSchema.findById(roomId);
+        console.log('Room found:', room);
+
+        if (room) {
+            if (room.users.includes(user?._id)) {
+                console.log(`${user?.name} is in room: ${roomId}, proceeding to remove`);
+                room.users = room.users.filter(userId => userId.toString() !== user?._id.toString());
+                console.log('Updated room.users after removal:', room.users);
+                await room.save();
+                socket.leave(roomId);
+                console.log(`Socket left room: ${roomId}`);
+                io.in(roomId).emit("user-leave-room", `${user?.name} left the room`);
+                console.log(`${user?.name} left room: ${roomId} and user-leave-room event emitted`);
+            } else {
+                console.log(`${user?.name} is not in room: ${roomId}`);
+                socket.emit("user-not-in-room", `${user?.name} is not in the room`);
+            }
+        } else {
+            console.log(`Room not found: ${roomId}`);
+            socket.emit("room-not-found", `Room not found: ${roomId}`);
+        }
     });
 
 
     socket.on('user-joined', (username) => {
-        console.log('User joined:', username);
+        // console.log('User joined:', username);
 
         // Broadcast the join message to all connected clients (including the joining user)
         socket.broadcast.emit('cast-user-joined', ` ${username} Joined the chat!`);
 
-        // Optionally, send a welcome message to the joining user
-        socket.emit('welcome', `Welcome to the chat, ${username}!`);
+        // socket.emit('welcome', `Welcome to the chat, ${username}!`);
     });
 
-    socket.on('chat-message', async ({ roomId, sender, message }) => {
-        // const roomId = socket.chatRoomId;  // Retrieve the stored roomId
+    socket.on('chat-message', async ({ roomId, sender, message, type }) => {
         if (!roomId) {
             console.error('User is not in a room');
             return;
         }
 
-        const sendMessage = await messageSchema({ chatRoom: roomId, sender: sender, message: message }).save();
-        io.to(roomId).emit('msg-broadcast', message); // Broadcast messages to all clients in room
+        await messageSchema({ chatRoom: roomId, sender: sender, message: message, type: type }).save();
 
         const messages = await getMessage(roomId);
         console.log('Messages:', messages); // Verify messages is an array
 
-        io.to(roomId).emit("get-message", messages); // Emit messages to the room only
-
+        io.to(roomId).emit("get-message", messages);
     });
-    // console.log(allMessage)
 
     socket.emit("get-message", async () => {
-        const roomId = socket.chatRoomId;  // Retrieve the stored roomId
+        const roomId = socket.chatRoomId;
         if (!roomId) {
             console.error('User is not in a room');
             return;
@@ -132,10 +158,9 @@ io.on('connection', (socket) => {
         const messages = await getMessage(roomId);
         console.log('Messages:', messages); // Verify messages is an array
 
-        io.to(roomId).emit('get-message', messages); // Emit messages to the room only
+        io.to(roomId).emit('get-message', messages);
     })
 
-    // console.log(messages)
     socket.on("typing", (username) => {
         // console.log(username)
         io.emit("user-typing", `${username} is typing`)
