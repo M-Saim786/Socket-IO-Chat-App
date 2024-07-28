@@ -143,7 +143,7 @@ io.on('connection', (socket) => {
         await messageSchema({ chatRoom: roomId, sender: sender, message: message, type: type }).save();
 
         const messages = await getMessage(roomId);
-        console.log('Messages:', messages); // Verify messages is an array
+        // console.log('Messages:', messages); // Verify messages is an array
 
         io.to(roomId).emit("get-message", messages);
     });
