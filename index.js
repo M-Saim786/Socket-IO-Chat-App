@@ -78,7 +78,6 @@ io.on('connection', (socket) => {
                 await room.save();
                 socket.join(roomId);
                 io.in(roomId).emit("user-joined-room", `${user?.name} joined room`);
-                // console.log(`${user?.name} joined room: ${roomId}`);
             } else {
                 console.log(`${user?.name} is already in room: ${roomId}`);
                 socket.emit("user-already-in-room", `${user?.name} is already in the room`);
@@ -86,29 +85,24 @@ io.on('connection', (socket) => {
             // await room.save();
         }
 
-        // socket.join(roomId);
         const messages = await getMessage(roomId);
         // console.log('Messages:', messages);
 
         io.to(roomId).emit('get-message', messages);
-
-        // console.log(`${user?.name} joined room: ${roomId}`);
     });
 
 
     // Leave a chat room
-    // Leave a chat room
     socket.on('leave-room', async ({ roomId, user }) => {
-        console.log('leave-room event received:', { roomId, user });
+        // console.log('leave-room event received:', { roomId, user });
 
         const room = await chatRoomSchema.findById(roomId);
-        console.log('Room found:', room);
 
         if (room) {
             if (room.users.includes(user?._id)) {
                 console.log(`${user?.name} is in room: ${roomId}, proceeding to remove`);
                 room.users = room.users.filter(userId => userId.toString() !== user?._id.toString());
-                console.log('Updated room.users after removal:', room.users);
+                // console.log('Updated room.users after removal:', room.users);
                 await room.save();
                 socket.leave(roomId);
                 console.log(`Socket left room: ${roomId}`);
@@ -156,7 +150,7 @@ io.on('connection', (socket) => {
         }
 
         const messages = await getMessage(roomId);
-        console.log('Messages:', messages); // Verify messages is an array
+        // console.log('Messages:', messages); // Verify messages is an array
 
         io.to(roomId).emit('get-message', messages);
     })
